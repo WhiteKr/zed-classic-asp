@@ -17,4 +17,4 @@ commit = "c70c1de07dedd532089c0c90835c8ed9fa694f5c"
 # NOTE: repo is private for now — must be public before registry submission
 [grammars.vbscript]
 repository = "https://github.com/WhiteKr/tree-sitter-vbscript"
-commit = "f147a6d8aa92199b5c3285ea206f792747de7da0"
+commit = "d8d284a4bb177de645191364d61e0a2df55f69ff"

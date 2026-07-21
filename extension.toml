@@ -6,6 +6,10 @@ authors = ["WhiteKr <hanjisu2215g@gmail.com>"]
 description = "Classic ASP (VBScript) syntax highlighting for Zed"
 repository = "https://github.com/WhiteKr/zed-classic-asp"
 
+[language_servers.asp-ls]
+name = "ASP Language Server"
+languages = ["Classic ASP", "VBScript"]
+
 [grammars.embedded_template]
 repository = "https://github.com/tree-sitter/tree-sitter-embedded-template"
 commit = "c70c1de07dedd532089c0c90835c8ed9fa694f5c"

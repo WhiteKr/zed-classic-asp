@@ -1,6 +1,6 @@
 name = "Classic ASP"
 grammar = "embedded_template"
-path_suffixes = ["asp", "asa"]
+path_suffixes = ["asp", "asa", "inc"]
 autoclose_before = ">})"
 wrap_characters = { start_prefix = "<", start_suffix = ">", end_prefix = "</", end_suffix = ">" }
 brackets = [

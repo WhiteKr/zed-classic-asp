@@ -10,6 +10,8 @@ const MAX_INDEXED_FILES: usize = 20_000;
 pub struct State {
     pub root: PathBuf,
     pub web_root: PathBuf,
+    /// Whether the client supports `LocationLink` responses for definitions.
+    pub definition_link_support: bool,
     /// Open-buffer contents, keyed by canonical path.
     pub overlays: HashMap<PathBuf, String>,
     pub index: HashMap<PathBuf, FileIndex>,
@@ -31,6 +33,7 @@ impl State {
         Self {
             root,
             web_root,
+            definition_link_support: false,
             overlays: HashMap::new(),
             index: HashMap::new(),
         }

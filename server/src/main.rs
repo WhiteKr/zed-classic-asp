@@ -8,7 +8,7 @@ use lsp_types::{
     Diagnostic, DiagnosticSeverity, DidChangeTextDocumentParams, DidCloseTextDocumentParams,
     DidOpenTextDocumentParams, DidSaveTextDocumentParams, GotoDefinitionParams,
     GotoDefinitionResponse, Hover, HoverContents, HoverParams, HoverProviderCapability,
-    InitializeParams, Location, MarkupContent, MarkupKind, OneOf, Position,
+    InitializeParams, Location, LocationLink, MarkupContent, MarkupKind, OneOf, Position,
     PublishDiagnosticsParams, Range, ReferenceParams, ServerCapabilities, SymbolInformation,
     TextDocumentSyncCapability, TextDocumentSyncKind, Url, WorkspaceSymbolParams,
     WorkspaceSymbolResponse,
@@ -57,6 +57,13 @@ fn main() -> Result<()> {
         .unwrap_or_default();
 
     let mut state = State::new(State::canon(&root), options.web_root);
+    state.definition_link_support = init_params
+        .capabilities
+        .text_document
+        .as_ref()
+        .and_then(|t| t.definition.as_ref())
+        .and_then(|d| d.link_support)
+        .unwrap_or(false);
     eprintln!(
         "asp-ls: root {:?}, web root {:?}",
         state.root, state.web_root
@@ -198,17 +205,33 @@ fn definition(state: &mut State, params: GotoDefinitionParams) -> Result<serde_j
         let byte_idx = state::utf16_col_to_byte(&line, pos.character);
         for inc in &index.includes {
             if inc.line == pos.line
-                && byte_idx >= inc.directive_span.0
-                && byte_idx <= inc.directive_span.1
+                && byte_idx >= inc.path_span.0
+                && byte_idx <= inc.path_span.1
             {
                 let Some(target) = &inc.resolved else {
                     return Ok(serde_json::Value::Null);
                 };
-                let location = Location {
-                    uri: path_to_uri(target).ok_or_else(|| anyhow::anyhow!("bad path"))?,
-                    range: Range::default(),
+                let uri = path_to_uri(target).ok_or_else(|| anyhow::anyhow!("bad path"))?;
+                // With link support, underline the quoted path as one link
+                // instead of letting the client linkify the word under the cursor.
+                let response = if state.definition_link_support {
+                    GotoDefinitionResponse::Link(vec![LocationLink {
+                        origin_selection_range: Some(span_to_range(
+                            inc.line,
+                            &line,
+                            inc.path_span,
+                        )),
+                        target_uri: uri,
+                        target_range: Range::default(),
+                        target_selection_range: Range::default(),
+                    }])
+                } else {
+                    GotoDefinitionResponse::Scalar(Location {
+                        uri,
+                        range: Range::default(),
+                    })
                 };
-                return Ok(serde_json::to_value(GotoDefinitionResponse::Scalar(location))?);
+                return Ok(serde_json::to_value(response)?);
             }
         }
     }

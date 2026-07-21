@@ -83,6 +83,15 @@ fn main() -> Result<()> {
             Message::Notification(note) => {
                 if let Some(uri) = handle_notification(&mut state, note) {
                     publish_diagnostics(&connection, &state, &uri)?;
+                    // A change here can (in)validate cached include resolution
+                    // in other files — refresh their diagnostics too.
+                    if let Some(path) = uri_path(&uri) {
+                        for dep in state.reindex_dependents(&path) {
+                            if let Some(dep_uri) = path_to_uri(&dep) {
+                                publish_diagnostics(&connection, &state, &dep_uri)?;
+                            }
+                        }
+                    }
                 }
             }
             Message::Response(_) => {}
@@ -145,7 +154,9 @@ fn handle_notification(state: &mut State, note: Notification) -> Option<Url> {
             let path = uri_path(&params.text_document.uri)?;
             state.overlays.remove(&path);
             state.reindex(&path);
-            None
+            // Republish so diagnostics computed from the discarded overlay
+            // don't stay stuck in the client.
+            Some(params.text_document.uri)
         }
         _ => None,
     }
@@ -196,7 +207,7 @@ fn position_context(state: &State, uri: &Url, position: Position) -> Option<(Pat
 fn definition(state: &mut State, params: GotoDefinitionParams) -> Result<serde_json::Value> {
     let pos = params.text_document_position_params.position;
     let uri = &params.text_document_position_params.text_document.uri;
-    let Some((path, text, line)) = position_context(state, uri, pos) else {
+    let Some((path, _text, line)) = position_context(state, uri, pos) else {
         return Ok(serde_json::Value::Null);
     };
 
@@ -204,10 +215,14 @@ fn definition(state: &mut State, params: GotoDefinitionParams) -> Result<serde_j
     if let Some(index) = state.index.get(&path) {
         let byte_idx = state::utf16_col_to_byte(&line, pos.character);
         for inc in &index.includes {
-            if inc.line == pos.line
-                && byte_idx >= inc.path_span.0
-                && byte_idx <= inc.path_span.1
-            {
+            // Link-capable clients get the narrow span so only the quoted path
+            // is underlined; others keep the whole directive as the trigger.
+            let span = if state.definition_link_support {
+                inc.path_span
+            } else {
+                inc.directive_span
+            };
+            if inc.line == pos.line && byte_idx >= span.0 && byte_idx <= span.1 {
                 let Some(target) = &inc.resolved else {
                     return Ok(serde_json::Value::Null);
                 };
@@ -252,7 +267,6 @@ fn definition(state: &mut State, params: GotoDefinitionParams) -> Result<serde_j
             }
         }
     }
-    let _ = text;
     if locations.is_empty() {
         Ok(serde_json::Value::Null)
     } else {

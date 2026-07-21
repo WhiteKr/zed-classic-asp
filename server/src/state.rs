@@ -79,7 +79,10 @@ impl State {
         if let Some(text) = self.overlays.get(path) {
             return Some(text.clone());
         }
-        std::fs::read_to_string(path).ok()
+        // Legacy Classic ASP files are often CP949/EUC-KR; decode lossily
+        // rather than dropping the file from the index.
+        let bytes = std::fs::read(path).ok()?;
+        Some(String::from_utf8_lossy(&bytes).into_owned())
     }
 
     pub fn reindex(&mut self, path: &Path) {
@@ -87,6 +90,29 @@ impl State {
             let index = parse::parse_file(&text, path, &self.web_root);
             self.index.insert(path.to_path_buf(), index);
         }
+    }
+
+    /// Re-resolves files whose cached include state may have been invalidated
+    /// by a change elsewhere: any file with an include that is unresolved (the
+    /// target may have just been created) or whose resolved target no longer
+    /// exists (just deleted). Returns the reindexed paths.
+    pub fn reindex_dependents(&mut self, changed: &Path) -> Vec<PathBuf> {
+        let stale: Vec<PathBuf> = self
+            .index
+            .iter()
+            .filter(|(file, index)| {
+                file.as_path() != changed
+                    && index.includes.iter().any(|inc| match &inc.resolved {
+                        None => true,
+                        Some(p) => !p.exists(),
+                    })
+            })
+            .map(|(file, _)| file.clone())
+            .collect();
+        for file in &stale {
+            self.reindex(file);
+        }
+        stale
     }
 
     /// Files reachable from `start` by following resolved includes (breadth-first,
@@ -154,10 +180,16 @@ impl State {
 // --- position helpers (LSP positions are UTF-16 code units) ---
 
 pub fn byte_to_utf16_col(line: &str, byte_idx: usize) -> u32 {
-    line[..byte_idx.min(line.len())]
-        .chars()
-        .map(|c| c.len_utf16() as u32)
-        .sum()
+    // Indexed spans can be stale relative to the text on disk, so `byte_idx`
+    // may not land on a char boundary — count chars instead of slicing.
+    let mut units = 0u32;
+    for (i, c) in line.char_indices() {
+        if i >= byte_idx {
+            break;
+        }
+        units += c.len_utf16() as u32;
+    }
+    units
 }
 
 pub fn utf16_col_to_byte(line: &str, utf16_col: u32) -> usize {

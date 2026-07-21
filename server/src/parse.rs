@@ -55,20 +55,21 @@ fn include_re() -> &'static Regex {
 fn sub_fn_re() -> &'static Regex {
     static RE: OnceLock<Regex> = OnceLock::new();
     RE.get_or_init(|| {
-        Regex::new(r"(?i)^\s*(?:(?:public|private|default)\s+)*(sub|function)\s+([a-zA-Z_]\w*)")
+        // `(?:<%=?\s*)?` — definitions can share a line with the opening ASP delimiter.
+        Regex::new(r"(?i)^\s*(?:<%=?\s*)?(?:(?:public|private|default)\s+)*(sub|function)\s+([a-zA-Z_]\w*)")
             .unwrap()
     })
 }
 
 fn class_re() -> &'static Regex {
     static RE: OnceLock<Regex> = OnceLock::new();
-    RE.get_or_init(|| Regex::new(r"(?i)^\s*class\s+([a-zA-Z_]\w*)").unwrap())
+    RE.get_or_init(|| Regex::new(r"(?i)^\s*(?:<%=?\s*)?class\s+([a-zA-Z_]\w*)").unwrap())
 }
 
 fn property_re() -> &'static Regex {
     static RE: OnceLock<Regex> = OnceLock::new();
     RE.get_or_init(|| {
-        Regex::new(r"(?i)^\s*(?:(?:public|private|default)\s+)*property\s+(?:get|let|set)\s+([a-zA-Z_]\w*)")
+        Regex::new(r"(?i)^\s*(?:<%=?\s*)?(?:(?:public|private|default)\s+)*property\s+(?:get|let|set)\s+([a-zA-Z_]\w*)")
             .unwrap()
     })
 }
@@ -95,10 +96,14 @@ fn resolve_existing(path: &Path) -> Option<PathBuf> {
     if path.is_file() {
         return path.canonicalize().ok();
     }
-    let mut current = PathBuf::from("/");
+    // Keep the root/drive prefix so the walk starts from the path's own root
+    // (a hardcoded "/" is drive-relative on Windows).
+    let mut current = PathBuf::new();
     for comp in path.components() {
         match comp {
-            std::path::Component::RootDir | std::path::Component::Prefix(_) => {}
+            std::path::Component::RootDir | std::path::Component::Prefix(_) => {
+                current.push(comp.as_os_str());
+            }
             std::path::Component::Normal(name) => {
                 let name = name.to_string_lossy();
                 let entries = std::fs::read_dir(&current).ok()?;

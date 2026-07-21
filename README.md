@@ -19,7 +19,7 @@ Syntax highlighting and outline support for Classic ASP (VBScript) files in the 
 
    ```sh
    git clone https://github.com/WhiteKr/zed-classic-asp
-   git clone https://github.com/WhiteKr/tree_sitter_vbscript
+   git clone https://github.com/WhiteKr/tree-sitter-vbscript
    ```
 
 2. Make sure the `[grammars.vbscript]` entry in `extension.toml` points at the grammar repository (a `file://` URL works for local development; the `commit` field must match a commit that exists there).
@@ -89,4 +89,4 @@ cargo install --path server
 ## Architecture
 
 - `<% %>` boundaries are parsed with [tree-sitter-embedded-template](https://github.com/tree-sitter/tree-sitter-embedded-template); HTML and VBScript are injected into `content` / `code` nodes.
-- VBScript uses a purpose-built minimal grammar ([tree_sitter_vbscript](https://github.com/WhiteKr/tree_sitter_vbscript)): a flat token-level grammar with structured nodes only for `Sub` / `Function` / `Class` / `Property` definitions, which keeps highlighting robust on partial or invalid code.
+- VBScript uses a purpose-built minimal grammar ([tree-sitter-vbscript](https://github.com/WhiteKr/tree-sitter-vbscript)): a flat token-level grammar with structured nodes only for `Sub` / `Function` / `Class` / `Property` definitions, which keeps highlighting robust on partial or invalid code.

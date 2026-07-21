@@ -14,7 +14,7 @@ languages = ["Classic ASP", "VBScript"]
 repository = "https://github.com/tree-sitter/tree-sitter-embedded-template"
 commit = "c70c1de07dedd532089c0c90835c8ed9fa694f5c"
 
-# TODO: publish to GitHub and switch to the https URL before release
+# NOTE: repo is private for now — must be public before registry submission
 [grammars.vbscript]
-repository = "file:///Users/whitekr/Documents/tree_sitter_vbscript"
-commit = "fcbca26e59d658e7bfd12f68a919a9d9ef9c9fae"
+repository = "https://github.com/WhiteKr/tree-sitter-vbscript"
+commit = "f147a6d8aa92199b5c3285ea206f792747de7da0"

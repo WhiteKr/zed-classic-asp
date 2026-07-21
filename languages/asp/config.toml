@@ -3,5 +3,9 @@ grammar = "embedded_template"
 path_suffixes = ["asp", "asa"]
 autoclose_before = ">})"
 wrap_characters = { start_prefix = "<", start_suffix = ">", end_prefix = "</", end_suffix = ">" }
-brackets = [{ start = "<", end = ">", close = true, newline = true }]
+brackets = [
+    { start = "<%", end = " %>", close = true, newline = true },
+    { start = "<!--", end = " -->", close = true, newline = true },
+    { start = "<", end = ">", close = false, newline = true },
+]
 block_comment = ["<!--", "-->"]

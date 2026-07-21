@@ -1,0 +1,9 @@
+{
+  "lsp": {
+    "asp-ls": {
+      "initialization_options": {
+        "webRoot": "test/lsp-workspace"
+      }
+    }
+  }
+}

@@ -1,0 +1,16 @@
+id = "classic-asp"
+name = "Classic ASP"
+version = "0.0.1"
+schema_version = 1
+authors = ["WhiteKr <hanjisu2215g@gmail.com>"]
+description = "Classic ASP (VBScript) syntax highlighting for Zed"
+repository = "https://github.com/WhiteKr/zed-classic-asp"
+
+[grammars.embedded_template]
+repository = "https://github.com/tree-sitter/tree-sitter-embedded-template"
+commit = "c70c1de07dedd532089c0c90835c8ed9fa694f5c"
+
+# TODO: publish to GitHub and switch to the https URL before release
+[grammars.vbscript]
+repository = "file:///Users/whitekr/Documents/tree_sitter_vbscript"
+commit = "fcbca26e59d658e7bfd12f68a919a9d9ef9c9fae"

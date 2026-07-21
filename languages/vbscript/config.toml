@@ -1,0 +1,4 @@
+name = "VBScript"
+grammar = "vbscript"
+path_suffixes = ["vbs"]
+line_comments = ["' "]

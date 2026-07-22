@@ -228,6 +228,33 @@ pub fn symbol_location(file: &Path, text: &str, sym: &SymbolDef) -> Option<Locat
     })
 }
 
+/// The double-quoted string literal containing the cursor, if any.
+/// Returns the content (without the quotes) and its byte span within the line.
+pub fn string_at(line: &str, utf16_col: u32) -> Option<(String, (usize, usize))> {
+    let byte_idx = utf16_col_to_byte(line, utf16_col);
+    let bytes = line.as_bytes();
+    let mut i = 0;
+    while i < bytes.len() {
+        if bytes[i] != b'"' {
+            i += 1;
+            continue;
+        }
+        let start = i + 1;
+        let mut end = start;
+        while end < bytes.len() && bytes[end] != b'"' {
+            end += 1;
+        }
+        if end >= bytes.len() {
+            return None; // unterminated string
+        }
+        if byte_idx >= start && byte_idx <= end {
+            return Some((line[start..end].to_string(), (start, end)));
+        }
+        i = end + 1;
+    }
+    None
+}
+
 /// The identifier under the cursor plus, when it is a `qualifier.member`
 /// access, the qualifier before the dot.
 pub fn word_at(line: &str, utf16_col: u32) -> Option<(String, Option<String>)> {

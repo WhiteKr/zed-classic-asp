@@ -95,6 +95,11 @@ r = request("textDocument/definition", {
     "textDocument": {"uri": uri(default_asp)}, "position": {"line": 12, "character": 25}})
 results["def_abs_include"] = r.get("result")
 
+# 5b. definition on Response.Redirect path string (line 14) -> includes/header.asp
+r = request("textDocument/definition", {
+    "textDocument": {"uri": uri(default_asp)}, "position": {"line": 14, "character": 25}})
+results["def_redirect_path"] = r.get("result")
+
 # 6. references: who includes lib/db.asp (ask from db.asp itself)
 db_asp = os.path.join(root, "lib", "db.asp")
 r = request("textDocument/references", {
@@ -127,6 +132,7 @@ check("hover_builtin", results["hover_builtin"])
 check("hover_user", results["hover_user"])
 check("hover_ado", results["hover_ado"])
 check("def_abs_include", results["def_abs_include"])
+check("def_redirect_path", results["def_redirect_path"])
 check("references", results["references"])
 check("symbols", results["symbols"])
 # default.asp has two unresolvable includes: missing.asp and 없는파일.asp

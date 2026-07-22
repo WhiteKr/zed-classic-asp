@@ -34,6 +34,7 @@ The extension ships with a minimal language server providing:
 
 - **Go to definition** on `<!--#include file|virtual="..."-->` directives (opens the included file). A leading `/` in `file=` paths resolves against the web root, same as `virtual=`
 - **Go to definition** on function/sub names — searched through the current file and its include chain, falling back to the whole workspace
+- **Go to definition** on path strings in code — `Response.Redirect "/page.asp"`, `Server.MapPath("lib/db.asp")`, etc. Query strings (`?...`) are ignored; leading `/` resolves against the web root, otherwise relative to the current file
 - **Find references** — lists every file that includes the current file (or, on an include directive, the directive's target)
 - **Workspace symbol search** for `Sub` / `Function` / `Class` / `Property` definitions
 - **Diagnostics** for include directives whose target file cannot be found

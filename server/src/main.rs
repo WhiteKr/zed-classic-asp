@@ -204,6 +204,34 @@ fn position_context(state: &State, uri: &Url, position: Position) -> Option<(Pat
     Some((path, text, line))
 }
 
+/// A definition response that jumps to the top of `target`, underlining
+/// `span` on the origin line when the client supports `LocationLink`.
+fn file_link_response(
+    state: &State,
+    line_no: u32,
+    line: &str,
+    span: (usize, usize),
+    target: &std::path::Path,
+) -> Result<serde_json::Value> {
+    let uri = path_to_uri(target).ok_or_else(|| anyhow::anyhow!("bad path"))?;
+    // With link support, underline the quoted path as one link
+    // instead of letting the client linkify the word under the cursor.
+    let response = if state.definition_link_support {
+        GotoDefinitionResponse::Link(vec![LocationLink {
+            origin_selection_range: Some(span_to_range(line_no, line, span)),
+            target_uri: uri,
+            target_range: Range::default(),
+            target_selection_range: Range::default(),
+        }])
+    } else {
+        GotoDefinitionResponse::Scalar(Location {
+            uri,
+            range: Range::default(),
+        })
+    };
+    Ok(serde_json::to_value(response)?)
+}
+
 fn definition(state: &mut State, params: GotoDefinitionParams) -> Result<serde_json::Value> {
     let pos = params.text_document_position_params.position;
     let uri = &params.text_document_position_params.text_document.uri;
@@ -226,27 +254,24 @@ fn definition(state: &mut State, params: GotoDefinitionParams) -> Result<serde_j
                 let Some(target) = &inc.resolved else {
                     return Ok(serde_json::Value::Null);
                 };
-                let uri = path_to_uri(target).ok_or_else(|| anyhow::anyhow!("bad path"))?;
-                // With link support, underline the quoted path as one link
-                // instead of letting the client linkify the word under the cursor.
-                let response = if state.definition_link_support {
-                    GotoDefinitionResponse::Link(vec![LocationLink {
-                        origin_selection_range: Some(span_to_range(
-                            inc.line,
-                            &line,
-                            inc.path_span,
-                        )),
-                        target_uri: uri,
-                        target_range: Range::default(),
-                        target_selection_range: Range::default(),
-                    }])
-                } else {
-                    GotoDefinitionResponse::Scalar(Location {
-                        uri,
-                        range: Range::default(),
-                    })
-                };
-                return Ok(serde_json::to_value(response)?);
+                return file_link_response(state, inc.line, &line, inc.path_span, target);
+            }
+        }
+    }
+
+    // On a path-like string in code (`Response.Redirect "/x.asp"`,
+    // `Server.MapPath("...")`, ...): jump to that file. Leading `/` resolves
+    // against the web root, otherwise relative to the current file.
+    if let Some((raw, span)) = state::string_at(&line, pos.character) {
+        let candidate = raw.split(['?', '#']).next().unwrap_or("").trim();
+        if !candidate.is_empty() {
+            if let Some(target) = parse::resolve_include(
+                &path,
+                &state.web_root,
+                parse::IncludeKind::File,
+                candidate,
+            ) {
+                return file_link_response(state, pos.line, &line, span, &target);
             }
         }
     }

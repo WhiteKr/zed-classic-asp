@@ -32,7 +32,7 @@ Syntax highlighting and outline support for Classic ASP (VBScript) files in the 
 
 The extension ships with a minimal language server providing:
 
-- **Go to definition** on `<!--#include file|virtual="..."-->` directives (opens the included file)
+- **Go to definition** on `<!--#include file|virtual="..."-->` directives (opens the included file). A leading `/` in `file=` paths resolves against the web root, same as `virtual=`
 - **Go to definition** on function/sub names — searched through the current file and its include chain, falling back to the whole workspace
 - **Find references** — lists every file that includes the current file (or, on an include directive, the directive's target)
 - **Workspace symbol search** for `Sub` / `Function` / `Class` / `Property` definitions

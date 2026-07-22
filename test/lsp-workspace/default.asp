@@ -10,3 +10,4 @@ Call RenderHeader
 Set rs = OpenConn("select 1")
 rs.MoveNext
 %>
+<!--#include file="/lib/db.asp"-->

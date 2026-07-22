@@ -125,9 +125,11 @@ pub fn resolve_include(
     raw: &str,
 ) -> Option<PathBuf> {
     let cleaned = raw.trim().replace('\\', "/");
+    // IIS rejects absolute paths in `file=` includes, but real codebases have
+    // them; treat a leading `/` as web-root-relative, same as `virtual=`.
     let candidate = match kind {
-        IncludeKind::File => from_file.parent()?.join(&cleaned),
-        IncludeKind::Virtual => web_root.join(cleaned.trim_start_matches('/')),
+        IncludeKind::File if !cleaned.starts_with('/') => from_file.parent()?.join(&cleaned),
+        _ => web_root.join(cleaned.trim_start_matches('/')),
     };
     resolve_existing(&candidate)
 }

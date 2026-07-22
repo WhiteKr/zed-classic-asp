@@ -90,6 +90,11 @@ r = request("textDocument/hover", {
     "textDocument": {"uri": uri(default_asp)}, "position": {"line": 10, "character": 5}})
 results["hover_ado"] = r.get("result")
 
+# 5a. definition on root-absolute file= include (line 12) -> lib/db.asp
+r = request("textDocument/definition", {
+    "textDocument": {"uri": uri(default_asp)}, "position": {"line": 12, "character": 25}})
+results["def_abs_include"] = r.get("result")
+
 # 6. references: who includes lib/db.asp (ask from db.asp itself)
 db_asp = os.path.join(root, "lib", "db.asp")
 r = request("textDocument/references", {
@@ -121,6 +126,7 @@ check("def_function", results["def_function"])
 check("hover_builtin", results["hover_builtin"])
 check("hover_user", results["hover_user"])
 check("hover_ado", results["hover_ado"])
+check("def_abs_include", results["def_abs_include"])
 check("references", results["references"])
 check("symbols", results["symbols"])
 # default.asp has two unresolvable includes: missing.asp and 없는파일.asp

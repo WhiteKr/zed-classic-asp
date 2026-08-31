@@ -5,7 +5,17 @@ on:
     tags: ["v*"]
 
 jobs:
+  create-release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - run: gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --generate-notes
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
   upload-asp-ls:
+    needs: create-release
     strategy:
       matrix:
         include:

@@ -25,6 +25,9 @@ struct InitOptions {
     web_root: Option<String>,
 }
 
+/// Files indexed per pause in client traffic.
+const INDEX_BATCH: usize = 64;
+
 fn main() -> Result<()> {
     let (connection, io_threads) = Connection::stdio();
 
@@ -68,10 +71,35 @@ fn main() -> Result<()> {
         "asp-ls: root {:?}, web root {:?}",
         state.root, state.web_root
     );
-    state.scan_workspace();
-    eprintln!("asp-ls: indexed {} files", state.index.len());
+    // Indexed a batch at a time between messages: a large workspace takes tens
+    // of seconds, and doing it up front left every request — `shutdown`
+    // included — queued behind it until the client gave up and killed us.
+    let mut pending = state.workspace_files();
+    pending.reverse();
 
-    for msg in &connection.receiver {
+    loop {
+        let msg = if pending.is_empty() {
+            match connection.receiver.recv() {
+                Ok(msg) => msg,
+                Err(_) => break,
+            }
+        } else {
+            match connection.receiver.try_recv() {
+                Ok(msg) => msg,
+                Err(err) if err.is_empty() => {
+                    for _ in 0..INDEX_BATCH {
+                        let Some(file) = pending.pop() else { break };
+                        state.reindex(&file);
+                    }
+                    if pending.is_empty() {
+                        eprintln!("asp-ls: indexed {} files", state.index.len());
+                    }
+                    continue;
+                }
+                Err(_) => break,
+            }
+        };
+
         match msg {
             Message::Request(req) => {
                 if connection.handle_shutdown(&req)? {

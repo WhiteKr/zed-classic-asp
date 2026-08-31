@@ -88,7 +88,16 @@ impl State {
     }
 
     pub fn scan_workspace(&mut self) {
-        let mut count = 0;
+        for file in self.workspace_files() {
+            self.reindex(&file);
+        }
+    }
+
+    /// Every file the workspace scan would index, in walk order. Cheap — no
+    /// file contents are read, so the caller can index them a batch at a time
+    /// while still serving requests.
+    pub fn workspace_files(&self) -> Vec<PathBuf> {
+        let mut files = Vec::new();
         let root = self.root.clone();
         for entry in WalkDir::new(&root)
             .follow_links(false)
@@ -110,13 +119,13 @@ impl State {
             if !INDEXED_EXTENSIONS.contains(&ext.as_str()) {
                 continue;
             }
-            self.reindex(&Self::canon(entry.path()));
-            count += 1;
-            if count >= MAX_INDEXED_FILES {
+            files.push(Self::canon(entry.path()));
+            if files.len() >= MAX_INDEXED_FILES {
                 eprintln!("asp-ls: workspace scan stopped at {MAX_INDEXED_FILES} files");
                 break;
             }
         }
+        files
     }
 
     pub fn text_of(&self, path: &Path) -> Option<String> {

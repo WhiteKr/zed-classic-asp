@@ -265,9 +265,10 @@ fn definition(state: &mut State, params: GotoDefinitionParams) -> Result<serde_j
     if let Some((raw, span)) = state::string_at(&line, pos.character) {
         let candidate = raw.split(['?', '#']).next().unwrap_or("").trim();
         if !candidate.is_empty() {
+            let web_root = state.web_root_for(&path);
             if let Some(target) = parse::resolve_include(
                 &path,
-                &state.web_root,
+                &web_root,
                 parse::IncludeKind::File,
                 candidate,
             ) {

@@ -9,7 +9,12 @@ const MAX_INDEXED_FILES: usize = 20_000;
 
 pub struct State {
     pub root: PathBuf,
+    /// Fallback web root: the configured `webRoot`, else the workspace root.
     pub web_root: PathBuf,
+    /// Directory -> web root, memoized so indexing does not stat every
+    /// ancestor once per file.
+    /// ponytail: never invalidated; restart the server after adding a marker.
+    web_root_cache: HashMap<PathBuf, PathBuf>,
     /// Whether the client supports `LocationLink` responses for definitions.
     pub definition_link_support: bool,
     /// Open-buffer contents, keyed by canonical path.
@@ -33,10 +38,49 @@ impl State {
         Self {
             root,
             web_root,
+            web_root_cache: HashMap::new(),
             definition_link_support: false,
             overlays: HashMap::new(),
             index: HashMap::new(),
         }
+    }
+
+    /// The web root `file` should resolve root-absolute includes against: the
+    /// nearest ancestor up to (and including) the workspace root that holds a
+    /// `global.asa` or `web.config`, else the fallback web root. Opening a
+    /// parent of several site folders is common, and each site has its own root.
+    pub fn web_root_for(&mut self, file: &Path) -> PathBuf {
+        let Some(dir) = file.parent() else {
+            return self.web_root.clone();
+        };
+        if !dir.starts_with(&self.root) {
+            return self.web_root.clone();
+        }
+
+        let mut chain = Vec::new();
+        let mut found = None;
+        let mut cursor = Some(dir);
+        while let Some(d) = cursor {
+            if let Some(hit) = self.web_root_cache.get(d) {
+                found = Some(hit.clone());
+                break;
+            }
+            chain.push(d.to_path_buf());
+            if has_web_root_marker(d) {
+                found = Some(d.to_path_buf());
+                break;
+            }
+            if d == self.root {
+                break;
+            }
+            cursor = d.parent();
+        }
+
+        let web_root = found.unwrap_or_else(|| self.web_root.clone());
+        for d in chain {
+            self.web_root_cache.insert(d, web_root.clone());
+        }
+        web_root
     }
 
     pub fn canon(path: &Path) -> PathBuf {
@@ -87,7 +131,8 @@ impl State {
 
     pub fn reindex(&mut self, path: &Path) {
         if let Some(text) = self.text_of(path) {
-            let index = parse::parse_file(&text, path, &self.web_root);
+            let web_root = self.web_root_for(path);
+            let index = parse::parse_file(&text, path, &web_root);
             self.index.insert(path.to_path_buf(), index);
         }
     }
@@ -175,6 +220,19 @@ impl State {
         }
         hits
     }
+}
+
+/// Whether `dir` looks like the root of an ASP site. Matched case-insensitively:
+/// these codebases carry both `global.asa` and `Global.asa`.
+fn has_web_root_marker(dir: &Path) -> bool {
+    let Ok(entries) = std::fs::read_dir(dir) else {
+        return false;
+    };
+    entries.filter_map(|e| e.ok()).any(|e| {
+        let name = e.file_name();
+        let name = name.to_string_lossy();
+        name.eq_ignore_ascii_case("global.asa") || name.eq_ignore_ascii_case("web.config")
+    })
 }
 
 // --- position helpers (LSP positions are UTF-16 code units) ---

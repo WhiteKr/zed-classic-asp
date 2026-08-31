@@ -56,7 +56,7 @@ impl ClassicAspExtension {
             .find(|asset| asset.name == asset_name)
             .ok_or_else(|| format!("no asset named {asset_name} in release {}", release.version))?;
 
-        let version_dir = format!("asp-ls-{}", release.version);
+        let version_dir = format!("asp-ls-{}", release.version.trim_start_matches('v'));
         let binary_path = match os {
             zed::Os::Windows => format!("{version_dir}/asp-ls.exe"),
             _ => format!("{version_dir}/asp-ls"),

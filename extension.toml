@@ -1,6 +1,6 @@
 id = "classic-asp"
 name = "Classic ASP"
-version = "0.2.0"
+version = "0.2.1"
 schema_version = 1
 authors = ["WhiteKr <hanjisu2215g@gmail.com>"]
 description = "Classic ASP (VBScript) syntax highlighting for Zed"

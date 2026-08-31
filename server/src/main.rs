@@ -109,6 +109,9 @@ fn main() -> Result<()> {
                 connection.sender.send(Message::Response(response))?;
             }
             Message::Notification(note) => {
+                if note.method == "exit" {
+                    break;
+                }
                 if let Some(uri) = handle_notification(&mut state, note) {
                     publish_diagnostics(&connection, &state, &uri)?;
                     // A change here can (in)validate cached include resolution
@@ -126,6 +129,9 @@ fn main() -> Result<()> {
         }
     }
 
+    // The writer thread lives until every sender is gone, so the connection
+    // has to go before joining or `exit`/EOF hangs here forever.
+    drop(connection);
     io_threads.join()?;
     Ok(())
 }
